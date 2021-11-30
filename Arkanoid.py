@@ -2,6 +2,7 @@ import pygame
 import random
 import time
 import sys
+import tkinter
 
 # Define constants for the screen width and height
 SCREEN_WIDTH = 1400
@@ -12,6 +13,9 @@ green = (0, 255, 0)
 blue = (0, 0, 128)
 
 PONG_SOUND = "sounds/noisecollector_pongblip_f-5.wav"
+LEVEL_COMPLETE_SOUND = "sounds/game-level-completed.wav"
+LOSE_A_LIFE_SOUND = "sounds/failure_alert.wav"
+GAME_OVER_SOUND = "sounds/game-over.wav"
 
 class Arkanoid_Game_Manager(object):
     """ Handles all the game objects,
@@ -27,14 +31,21 @@ class Arkanoid_Game_Manager(object):
         pygame.init()
         pygame.display.set_caption("Python Arkanoid by Jordan Vo")
 
+
+        ## Game Data
+        self.running = False
+        self.game_over = True
+
+        ## Sound Data
         pygame.mixer.init()
         self.pong_sound = pygame.mixer.Sound(PONG_SOUND)
+        self.level_complete_sound = pygame.mixer.Sound(LEVEL_COMPLETE_SOUND)
+        self.lose_a_life_sound = pygame.mixer.Sound(LOSE_A_LIFE_SOUND)
+        self.game_over_sound = pygame.mixer.Sound(GAME_OVER_SOUND)
 
         ## Level Data
         self.current_level = 0
         self.bricks = []
-        self.running = False
-        self.game_over = True
 
         ## Player Data
         self.score = 0
@@ -89,7 +100,7 @@ class Arkanoid_Game_Manager(object):
 
     def spawn_ball(self):
         self.ball = Ball(SCREEN_WIDTH/2,
-                         SCREEN_HEIGHT-100)
+                         SCREEN_HEIGHT-80)
 
     def add_brick(self, brick):
         self.bricks.append(brick)
@@ -105,6 +116,7 @@ class Arkanoid_Game_Manager(object):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
+                    print ("Thanks for playing!!!")
                     pygame.quit()
                     sys.exit()
             elif event.type == pygame.MOUSEMOTION:
@@ -127,10 +139,11 @@ class Arkanoid_Game_Manager(object):
                             self.spawn_ball()
                 elif event.button == 3:
                     print ("right click")
+                    self.next_level()
 
     def show_game_over_screen(self):
         self.paddle = None
-        game_over_text = "Game over... Score was: %i"% (self.score)
+        game_over_text = "Game over!!! Score was: %i"% (self.score)
         sub_text = "Left click to restart..."
         main_font = pygame.font.Font('freesansbold.ttf', 72)
         sub_font = pygame.font.Font('freesansbold.ttf', 32)
@@ -151,6 +164,7 @@ class Arkanoid_Game_Manager(object):
         self.lives -= 1
         if self.lives == 0:
             self.game_over = True
+            self.game_over_sound.play()
 
     def handle_the_ball(self):
         if self.ball:
@@ -158,7 +172,7 @@ class Arkanoid_Game_Manager(object):
             self.screen.blit(self.ball.image, (self.ball.x,
                                                self.ball.y))
             if self.ball.thrown == False:
-                self.ball.x = self.paddle.x + self.paddle.center_x/2
+                self.ball.x = self.paddle.x + self.paddle.center_x - self.ball.center_x
             elif self.ball.thrown == True:
                 if self.ball.x < self.bounds.left or self.ball.x + self.ball.image.get_width() > self.bounds.right:
                     self.ball.vx *= -1
@@ -167,6 +181,7 @@ class Arkanoid_Game_Manager(object):
                 elif self.ball.y + self.ball.center_y > self.bounds.bottom:
                     self.ball = None
                     self.lose_a_life()
+                    self.lose_a_life_sound.play()
                     print ("You lost the ball!")
 
     def display_score(self):
@@ -175,6 +190,11 @@ class Arkanoid_Game_Manager(object):
         textRect = text.get_rect()
         textRect.center = (SCREEN_WIDTH/2, 50)
         self.screen.blit(text, textRect)
+
+    def next_level(self):
+        self.level_complete_sound.play()
+        self.current_level += 1
+        self.load_level()
 
     def tick(self):
         ## DISPLAY CURRENT BACKGROUND
@@ -199,10 +219,9 @@ class Arkanoid_Game_Manager(object):
         ## DISPLAY THE SCORE
         self.display_score()
 
-        ## DISPLAY THE GAME OVER SCREEN (If Applicable)
-        
         if self.game_over == True:
             self.show_game_over_screen()
+            self.paddle = None
             
         ## HANDLE COLLISIONS
         if self.ball:
@@ -216,8 +235,10 @@ class Arkanoid_Game_Manager(object):
                     self.score += 500
                     self.update_score()
                     self.pong_sound.play()
+                    if self.bricks == []:
+                        self.next_level()
         pygame.display.flip()
-        time.sleep(0.001)
+        time.sleep(0.01)
 
 class Game_Object(object):
     def __init__(self, x, y):
@@ -255,6 +276,7 @@ class Paddle(Game_Object):
         self.image_file = "images/arkanoid_paddle.png"
         self.load_image()
         self.image = pygame.transform.scale(self.image, (100, 50))
+        self.rect = self.get_rect()
         self.center_x = (self.image.get_width()/2)
         self.center_y = (self.image.get_height()/2)
 
@@ -275,14 +297,15 @@ class Ball(Game_Object):
         self.thrown = False
         self.image_file = "images/arkanoid_ball.png"
         self.load_image()
-        self.image = pygame.transform.scale(self.image, (50, 50))
+        self.image = pygame.transform.scale(self.image, (25, 25))
+        self.rect = self.get_rect()
         self.center_x = (self.image.get_width()/2)
         self.center_y = (self.image.get_height()/2)
 
     def throw_ball(self):
         self.thrown = True
-        self.vx = 7
-        self.vy = -7
+        self.vx = 10
+        self.vy = -10
 
     def update(self):
         self.x += self.vx
