@@ -191,6 +191,14 @@ class Arkanoid_Game_Manager(object):
         textRect.center = (SCREEN_WIDTH/2, 50)
         self.screen.blit(text, textRect)
 
+    def display_lives(self):
+        _str = "Lives: %i" % (self.lives)
+        font = pygame.font.Font('freesansbold.ttf', 20)
+        text = font.render(_str, True, green, blue)
+        textRect = text.get_rect()
+        textRect.center = (SCREEN_WIDTH-100, 50)
+        self.screen.blit(text, textRect)
+
     def next_level(self):
         self.level_complete_sound.play()
         self.current_level += 1
@@ -219,6 +227,10 @@ class Arkanoid_Game_Manager(object):
         ## DISPLAY THE SCORE
         self.display_score()
 
+        ## DISPLAY LIVES
+        self.display_lives()
+
+        ## DISPLAY THE GAME OVER SCREEN
         if self.game_over == True:
             self.show_game_over_screen()
             self.paddle = None
