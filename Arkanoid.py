@@ -7,6 +7,8 @@ import sys
 SCREEN_WIDTH = 1400
 SCREEN_HEIGHT = 800
 
+PONG_SOUND = "sounds/noisecollector_pongblip_f-5.wav"
+
 class Arkanoid_Game_Manager(object):
     """ Handles all the game objects,
         and manages all the game stuff!!!"""
@@ -17,8 +19,38 @@ class Arkanoid_Game_Manager(object):
         self.spawn_ball()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         self.bounds = self.screen.get_rect()
+
+        pygame.mixer.init()
+        self.pong_sound = pygame.mixer.Sound(PONG_SOUND)
+
+        ## Level Data
+        self.current_level = 0
         self.bricks = []
         self.running = False
+
+        ## Player Data
+        self.score = 0
+
+    def load_level(self):
+        filename = "levels/level%i.txt" % (self.current_level)
+        level_file = open(filename, mode="r")
+        rows = 0
+        columns = 0
+        for line in level_file:
+            line = line.strip()
+            print (line)
+            for brick in line:
+                if brick == "0":
+                    rows+=1
+                elif brick == "1":
+                    brick = Brick(rows*125, columns*62)
+                    self.add_brick(brick)
+                    rows+=1
+            rows=0
+            columns+=1
+        print ("Level finished loading.")
+        for brick in self.bricks:
+            print (brick)
 
     def do_game_loop(self):
         while self.running == True:
@@ -28,7 +60,8 @@ class Arkanoid_Game_Manager(object):
         # Create the screen object
         # The size is determined by the constant SCREEN_WIDTH and SCREEN_HEIGHT
         pygame.init()
-##        pygame.mouse.set_visible(False)
+        pygame.mouse.set_visible(False)
+        ## Make the First level
         self.running = True
         self.do_game_loop( )
 
@@ -36,8 +69,12 @@ class Arkanoid_Game_Manager(object):
         self.ball = Ball(SCREEN_WIDTH/2,
                          SCREEN_HEIGHT-100)
 
-    def destroy_ball(self):
-        self.ball = None
+    def add_brick(self, brick):
+        self.bricks.append(brick)
+
+    def remove_brick(self, brick):
+        if brick in self.bricks:
+            self.bricks.remove(brick)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -91,27 +128,63 @@ class Arkanoid_Game_Manager(object):
         if self.ball:
             self.handle_the_ball()
 
-##        for brick in self.bricks:
-##            brick.update()
+        ## DISPLAY THE BRICKS
+        for brick in self.bricks:
+            self.screen.blit(brick.image, (brick.x,
+                                           brick.y))
 
         ## HANDLE COLLISIONS
         if self.ball:
             if self.ball.is_collided_with(self.paddle):
                 self.ball.vy *= -1
+            for brick in self.bricks:
+                if self.ball.is_collided_with(brick):
+                    self.remove_brick(brick)
+                    self.ball.vy *= -1
+                    print ("Hit a brick!")
+                    self.score += 500
+                    self.pong_sound.play()
         pygame.display.flip()
-        time.sleep(0.01)
+        time.sleep(0.001)
 
-class Paddle(object):
+class Game_Object(object):
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.load_image()
-        self.center_x = (self.image.get_width()/2)
-        self.center_y = (self.image.get_height()/2)
+        self.image_file = ""
 
     def get_rect(self):
         self.rect = self.image.get_rect()
         return self.rect
+
+    def load_image(self):
+        self.image = pygame.image.load(self.image_file)
+
+    def is_collided_with(self, target):
+        rect1 = self.image.get_rect()
+        rect1.topleft = (self.x,self.y)
+        rect2 = target.image.get_rect()
+        rect2.topleft = (target.x, target.y)
+        return rect1.colliderect(rect2)
+
+class Brick(Game_Object):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.image_file = "images/arkanoid_brick.png"
+        self.load_image()
+        self.image = pygame.transform.scale(self.image, (125, 62))
+
+    def __str__(self):
+        return ("Brick Object @ (%i, %i)" % (self.x, self.y))
+
+class Paddle(Game_Object):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        self.image_file = "images/arkanoid_paddle.png"
+        self.load_image()
+        self.image = pygame.transform.scale(self.image, (100, 50))
+        self.center_x = (self.image.get_width()/2)
+        self.center_y = (self.image.get_height()/2)
 
     def set_pos(self, pos):
         if pos[0] <= 0 + self.center_x:
@@ -122,18 +195,15 @@ class Paddle(object):
             self.x = pos[0] - self.center_x
 ##        self.y = pos[1] - self.center_y
         
-    def load_image(self):
-        image = pygame.image.load("images/arkanoid_paddle.png")
-        self.image = pygame.transform.scale(image, (100, 50))
-        
-class Ball(object):
+class Ball(Game_Object):
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
+        super().__init__(x,y)
         self.vx = 0
         self.vy = 0
         self.thrown = False
+        self.image_file = "images/arkanoid_ball.png"
         self.load_image()
+        self.image = pygame.transform.scale(self.image, (50, 50))
         self.center_x = (self.image.get_width()/2)
         self.center_y = (self.image.get_height()/2)
 
@@ -146,25 +216,16 @@ class Ball(object):
         self.x += self.vx
         self.y += self.vy
 
-    def get_rect(self):
-        self.rect = self.image.get_rect()
-        return self.rect
-    
-    def load_image(self):
-        image = pygame.image.load("images/arkanoid_ball.png")
-        self.image = pygame.transform.scale(image, (50, 50))
-
-    def is_collided_with(self, target):
-        rect1 = self.image.get_rect()
-        rect1.topleft = (self.x,self.y)
-        rect2 = target.image.get_rect()
-        rect2.topleft = (target.x, target.y)
-        return rect1.colliderect(rect2)
-
-def test_game():
-    print ("Game was test.")
+def test_1(): # Test a single brick
     game = Arkanoid_Game_Manager()
+    brick = Brick(0,0)
+    game.add_brick(brick)
+    game.start_game()
+
+def test_2(): # Level testing
+    game = Arkanoid_Game_Manager()
+    game.load_level()
     game.start_game()
 
 if __name__ == "__main__":
-    test_game()
+    test_2()
