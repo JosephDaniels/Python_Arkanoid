@@ -30,6 +30,7 @@ class Arkanoid_Game_Manager(object):
 
         ## Player Data
         self.score = 0
+        self.lives = 3  # Three lives then its game over!
 
     def load_level(self):
         filename = "levels/level%i.txt" % (self.current_level)
@@ -38,7 +39,6 @@ class Arkanoid_Game_Manager(object):
         columns = 0
         for line in level_file:
             line = line.strip()
-            print (line)
             for brick in line:
                 if brick == "0":
                     rows+=1
@@ -49,8 +49,6 @@ class Arkanoid_Game_Manager(object):
             rows=0
             columns+=1
         print ("Level finished loading.")
-        for brick in self.bricks:
-            print (brick)
 
     def do_game_loop(self):
         while self.running == True:
@@ -60,10 +58,17 @@ class Arkanoid_Game_Manager(object):
         # Create the screen object
         # The size is determined by the constant SCREEN_WIDTH and SCREEN_HEIGHT
         pygame.init()
+        pygame.display.set_caption("Python Arkanoid by Jordan Vo")
         pygame.mouse.set_visible(False)
         ## Make the First level
         self.running = True
-        self.do_game_loop( )
+        self.do_game_loop()
+
+    def restart(self):
+        self.paddle = Paddle(SCREEN_WIDTH/2,
+                             SCREEN_HEIGHT-50)
+        self.running = True
+        self.do_game_loop()
 
     def spawn_ball(self):
         self.ball = Ball(SCREEN_WIDTH/2,
@@ -83,8 +88,9 @@ class Arkanoid_Game_Manager(object):
                     pygame.quit()
                     sys.exit()
             elif event.type == pygame.MOUSEMOTION:
-                mouse_pos = event.pos
-                self.paddle.set_pos(mouse_pos)
+                if self.paddle:
+                    mouse_pos = event.pos
+                    self.paddle.set_pos(mouse_pos)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     print ("left click")
@@ -94,9 +100,21 @@ class Arkanoid_Game_Manager(object):
                         else:
                             self.ball.throw_ball()
                     elif self.ball == None:
-                        self.spawn_ball()
+                        if self.paddle == None:
+                            self.restart()
+                        else:
+                            self.spawn_ball()
                 elif event.button == 3:
                     print ("right click")
+
+    def show_game_over_screen(self):
+        self.paddle = None
+        print ("Game over... Score was: %i" % (self.score))
+
+    def lose_a_life(self):
+        self.lives -= 1
+        if self.lives == 0:
+            self.show_game_over_screen()
 
     def handle_the_ball(self):
         if self.ball:
@@ -111,7 +129,8 @@ class Arkanoid_Game_Manager(object):
                 elif self.ball.y - self.ball.center_y < self.bounds.top:
                     self.ball.vy *= -1
                 elif self.ball.y + self.ball.center_y > self.bounds.bottom:
-                    self.destroy_ball()
+                    self.ball = None
+                    self.lose_a_life()
                     print ("You lost the ball!")
 
     def tick(self):
@@ -122,8 +141,9 @@ class Arkanoid_Game_Manager(object):
         self.handle_events()
 
         ## DISPLAY THE paddle
-        self.screen.blit(self.paddle.image, (self.paddle.x,
-                                             self.paddle.y))
+        if self.paddle:
+            self.screen.blit(self.paddle.image, (self.paddle.x,
+                                                 self.paddle.y))
         ## DISPLAY THE BALL
         if self.ball:
             self.handle_the_ball()
@@ -209,8 +229,8 @@ class Ball(Game_Object):
 
     def throw_ball(self):
         self.thrown = True
-        self.vx = 5
-        self.vy = -5
+        self.vx = 7
+        self.vy = -7
 
     def update(self):
         self.x += self.vx
