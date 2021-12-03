@@ -34,18 +34,17 @@ class Arkanoid_Game_Manager(object):
     """ Handles all the game objects,
         and manages all the game stuff!!!"""
     def __init__(self):
+
+        ## Add Game Objects
         self.paddle = Paddle(SCREEN_WIDTH/2,
                              SCREEN_HEIGHT-20)
         self.ball = None
         self.spawn_ball()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        self.bounds = self.screen.get_rect()
-
-        pygame.init()
-        pygame.display.set_caption("Python Arkanoid by Jordan Vo")
-
+        self.powerups = []
 
         ## Game Data
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        self.bounds = self.screen.get_rect()
         self.running = False
         self.game_over = True
 
@@ -65,6 +64,9 @@ class Arkanoid_Game_Manager(object):
         self.score_text = "Welcome to Pygame Arkanoid"
         self.lives = 3  # Three lives then its game over!
         self.continues = 0  # The number of times the player had to restart
+
+        pygame.init()
+        pygame.display.set_caption("Python Arkanoid by Jordan Vo")
 
     def load_level(self):
         filename = "levels/level%i.txt" % (self.current_level)
@@ -258,6 +260,7 @@ class Arkanoid_Game_Manager(object):
 
     def drop_powerup(self, position):
         powerup = Powerup(position[0],position[1])
+        self.powerups.append(powerup)
 
     def handle_brick_collision(self, brick):
         if brick.brick_type == "1":
@@ -265,13 +268,18 @@ class Arkanoid_Game_Manager(object):
         elif brick.brick_type == "X":
             pass
         elif brick.brick_type == "S":
-            x,y = brick.x+brick.image.get_width/2, brick.y+brick.image.get_height/2
-            self.drop_powerup(x,y)
+            self.remove_brick(brick)
+            pos = brick.x+brick.image.get_width()/2, brick.y+brick.image.get_height()/2
+            self.drop_powerup(pos)
         elif int(brick.brick_type) in [2,3,4,5,6]:
             new_brick_type = int(brick.brick_type)-1
             brick.set_brick_type(str(new_brick_type))
         self.ball.vy *= -1
 
+    def power_up(self):
+        print ("Power up!")
+        
+        
     def tick(self):
         ## DISPLAY CURRENT BACKGROUND
         self.screen.fill((0,0,100))
@@ -293,6 +301,12 @@ class Arkanoid_Game_Manager(object):
         for brick in self.bricks:
             self.screen.blit(brick.image,
                              (brick.x, brick.y))
+
+        ## DISPLAY THE POWERUPS
+        for power_up in self.power_ups:
+            power_up.update()
+            self.screen.blit(power_up.image,
+                             (power_up.x, power_up.y))
 
         ## DISPLAY THE SCORE
         self.display_score()
@@ -317,6 +331,11 @@ class Arkanoid_Game_Manager(object):
                     self.pong_sound.play()
                     if self.bricks == []:
                         self.next_level()
+        if powerups != []:
+            for powerup in powerups:
+                if powerup.is_collided_with(self.paddle):
+                    print ("POWER UP!")
+                    self.powerup()
         pygame.display.flip()
         time.sleep(0.01)
 
@@ -343,9 +362,13 @@ class Game_Object(object):
 class Powerup(Game_Object):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.image = "images/powerup.png"
+        self.image_file = "images/powerup.png"
         self.load_image()
-        self.image = pygame.transform.scale(self.image, (125, 62))
+        self.vy = 9.8
+        self.image = pygame.transform.scale(self.image, (80, 30))
+
+    def update(self):
+        self.y += self.vy
 
 class Brick(Game_Object):
     def __init__(self, x, y, brick_type):
