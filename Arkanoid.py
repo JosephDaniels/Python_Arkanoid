@@ -416,7 +416,7 @@ class Brick(Game_Object):
 class Paddle(Game_Object):
     def __init__(self, x, y):
         super().__init__(x, y)
-        self.last_positions = []  # A list with the last 5 positions
+        self.last_positions = 0  # A list with the last 5 positions
         self.disabled = False
         self.dx = 0  # Calculates on update
         self.vx = 0
@@ -452,6 +452,7 @@ class Paddle(Game_Object):
         self.vx += 15
 
     def set_pos(self, pos):
+        last_x = self.x
         if self.disabled != True:
             if pos[0] <= 0 + self.center_x:
                 self.x = 0
@@ -459,11 +460,15 @@ class Paddle(Game_Object):
                 self.x = SCREEN_WIDTH - self.image.get_width()
             elif pos[0] > 0 and pos[0] < SCREEN_WIDTH - self.center_x:
                 self.x = pos[0] - self.center_x
-##        self.y = pos[1] - self.center_y
+            self.vx = pos[0] - last_x
 
     def update(self):
+        self.track_mouse()
         if self.disabled != True:
             self.x += self.vx
+
+    def track_mouse(self):
+        self.last_position = self.x
         
 class Ball(Game_Object):
     def __init__(self, x, y):
