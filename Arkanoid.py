@@ -460,7 +460,7 @@ class Paddle(Game_Object):
                 self.x = SCREEN_WIDTH - self.image.get_width()
             elif pos[0] > 0 and pos[0] < SCREEN_WIDTH - self.center_x:
                 self.x = pos[0] - self.center_x
-            self.vx = pos[0] - last_x
+            #self.vx = pos[0] - last_x
 
     def update(self):
         self.track_mouse()
